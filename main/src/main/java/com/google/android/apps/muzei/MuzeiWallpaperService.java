@@ -97,7 +97,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
 
         private boolean mArtDetailMode = false;
         private boolean mVisible = true;
-        private boolean mValidDoubleTap;
 
         private TapAction mDoubleTapAction = TapAction.ShowOriginalArtwork;
         private TapAction mThreeFingerAction = TapAction.Nothing;
@@ -212,19 +211,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             mRenderer.setNormalOffsetX(xOffset);
         }
 
-        @Override
-        public Bundle onCommand(String action, int x, int y, int z, Bundle extras,
-                boolean resultRequested) {
-            // mValidDoubleTap previously set in the gesture listener
-            if (WallpaperManager.COMMAND_TAP.equals(action) && mValidDoubleTap) {
-                executeTapAction(mDoubleTapAction);
-                // Reset the flag
-                mValidDoubleTap = false;
-            }
-
-            return super.onCommand(action, x, y, z, extras, resultRequested);
-        }
-
         private void executeTapAction(TapAction action) {
             switch(action)
             {
@@ -304,19 +290,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             }
         }
 
-        private final Runnable mDoubleTapTimeout = new Runnable() {
-
-            @Override
-            public void run() {
-                queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        mValidDoubleTap = false;
-                    }
-                });
-            }
-        };
-
         private final GestureDetector.OnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
@@ -331,11 +304,7 @@ public class MuzeiWallpaperService extends GLWallpaperService {
                     return true;
                 }
 
-                mValidDoubleTap = true; // processed in onCommand/COMMAND_TAP
-
-                mMainThreadHandler.removeCallbacks(mDoubleTapTimeout);
-                final int timeout = ViewConfiguration.getDoubleTapTimeout();
-                mMainThreadHandler.postDelayed(mDoubleTapTimeout, timeout);
+                executeTapAction(mDoubleTapAction);
                 return true;
             }
         };
