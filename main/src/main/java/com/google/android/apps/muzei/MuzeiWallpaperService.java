@@ -16,18 +16,15 @@
 
 package com.google.android.apps.muzei;
 
-import android.app.WallpaperManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
-import android.view.ViewConfiguration;
 import android.widget.Toast;
 
 import com.google.android.apps.muzei.api.Artwork;
@@ -97,7 +94,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
 
         private boolean mArtDetailMode = false;
         private boolean mVisible = true;
-        private boolean mValidDoubleTap;
 
         @TapAction.Value
         private int mDoubleTapAction = TapAction.SHOW_ORIGINAL_ARTWORK;
@@ -218,19 +214,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             mRenderer.setNormalOffsetX(xOffset);
         }
 
-        @Override
-        public Bundle onCommand(String action, int x, int y, int z, Bundle extras,
-                boolean resultRequested) {
-            // mValidDoubleTap previously set in the gesture listener
-            if (WallpaperManager.COMMAND_TAP.equals(action) && mValidDoubleTap) {
-                executeTapAction(mDoubleTapAction);
-                // Reset the flag
-                mValidDoubleTap = false;
-            }
-
-            return super.onCommand(action, x, y, z, extras, resultRequested);
-        }
-
         private void executeTapAction(@TapAction.Value int action) {
             switch(action)
             {
@@ -309,19 +292,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
                 executeTapAction(mThreeFingerAction);
             }
         }
-
-        private final Runnable mDoubleTapTimeout = new Runnable() {
-
-            @Override
-            public void run() {
-                queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        mValidDoubleTap = false;
-                    }
-                });
-            }
-        };
 
         private final GestureDetector.OnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
             @Override
