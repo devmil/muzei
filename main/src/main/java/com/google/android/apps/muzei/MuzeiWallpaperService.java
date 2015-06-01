@@ -97,9 +97,13 @@ public class MuzeiWallpaperService extends GLWallpaperService {
 
         private boolean mArtDetailMode = false;
         private boolean mVisible = true;
+        private boolean mValidDoubleTap;
 
-        private TapAction mDoubleTapAction = TapAction.ShowOriginalArtwork;
-        private TapAction mThreeFingerAction = TapAction.Nothing;
+        @TapAction.Value
+        private int mDoubleTapAction = TapAction.SHOW_ORIGINAL_ARTWORK;
+        @TapAction.Value
+        private int mThreeFingerAction = TapAction.NOTHING;
+
         private long mLastThreeFingerAction = 0;
 
         @Override
@@ -125,11 +129,14 @@ public class MuzeiWallpaperService extends GLWallpaperService {
 
 
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            int doubleTapActionCode = sp.getInt(PREF_DOUBLETAPACTION, TapAction.ShowOriginalArtwork.getCode());
-            mDoubleTapAction = TapAction.fromCode(doubleTapActionCode);
 
-            int threeFingerActionCode = sp.getInt(PREF_THREEFINGERACTION, TapAction.Nothing.getCode());
-            mThreeFingerAction = TapAction.fromCode(threeFingerActionCode);
+            @TapAction.Value
+            int doubleTapActionCode = sp.getInt(PREF_DOUBLETAPACTION, TapAction.SHOW_ORIGINAL_ARTWORK);
+            mDoubleTapAction = doubleTapActionCode;
+
+            @TapAction.Value
+            int threeFingerActionCode = sp.getInt(PREF_THREEFINGERACTION, TapAction.NOTHING);
+            mThreeFingerAction = threeFingerActionCode;
         }
 
         @Override
@@ -211,16 +218,29 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             mRenderer.setNormalOffsetX(xOffset);
         }
 
-        private void executeTapAction(TapAction action) {
+        @Override
+        public Bundle onCommand(String action, int x, int y, int z, Bundle extras,
+                boolean resultRequested) {
+            // mValidDoubleTap previously set in the gesture listener
+            if (WallpaperManager.COMMAND_TAP.equals(action) && mValidDoubleTap) {
+                executeTapAction(mDoubleTapAction);
+                // Reset the flag
+                mValidDoubleTap = false;
+            }
+
+            return super.onCommand(action, x, y, z, extras, resultRequested);
+        }
+
+        private void executeTapAction(@TapAction.Value int action) {
             switch(action)
             {
-                case NextArtwork:
+                case TapAction.NEXT_ARTWORK:
                     executeNextArtworkAction();
                     break;
-                case ShowOriginalArtwork:
+                case TapAction.SHOW_ORIGINAL_ARTWORK:
                     executeShowOriginalArtworkAction();
                     break;
-                case ViewArtwork:
+                case TapAction.VIEW_ARTWORK:
                     executeViewArtworkAction();
                     break;
                 default:
@@ -289,6 +309,19 @@ public class MuzeiWallpaperService extends GLWallpaperService {
                 executeTapAction(mThreeFingerAction);
             }
         }
+
+        private final Runnable mDoubleTapTimeout = new Runnable() {
+
+            @Override
+            public void run() {
+                queueEvent(new Runnable() {
+                    @Override
+                    public void run() {
+                        mValidDoubleTap = false;
+                    }
+                });
+            }
+        };
 
         private final GestureDetector.OnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
             @Override
