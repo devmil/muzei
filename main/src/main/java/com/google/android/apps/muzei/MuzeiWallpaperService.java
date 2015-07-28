@@ -57,6 +57,8 @@ public class MuzeiWallpaperService extends GLWallpaperService {
 
     private static final int THREE_FINGER_ACTION_PAUSE_MS = 1000 * 1; //1s
 
+    private static final long DOUBLE_TAP_THRESHOLD_MS = 1500;
+
     private static final String TAG = LogUtil.makeLogTag(MuzeiWallpaperService.class);
 
     @Override
@@ -89,7 +91,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
         private Handler mMainThreadHandler = new Handler();
 
         private RenderController mRenderController;
-        private GestureDetector mGestureDetector;
         private MuzeiBlurRenderer mRenderer;
 
         private boolean mArtDetailMode = false;
@@ -115,7 +116,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             setRenderMode(RENDERMODE_WHEN_DIRTY);
             requestRender();
 
-            mGestureDetector = new GestureDetector(MuzeiWallpaperService.this, mGestureListener);
             if (!isPreview()) {
                 EventBus.getDefault().postSticky(new WallpaperActiveStateChangedEvent(true));
             }
@@ -280,7 +280,6 @@ public class MuzeiWallpaperService extends GLWallpaperService {
         @Override
         public void onTouchEvent(MotionEvent event) {
             super.onTouchEvent(event);
-            mGestureDetector.onTouchEvent(event);
             // Delay blur from temporary refocus while touching the screen
             delayedBlur();
             long curTime = SystemClock.elapsedRealtime();
@@ -290,6 +289,26 @@ public class MuzeiWallpaperService extends GLWallpaperService {
             {
                 mLastThreeFingerAction = curTime;
                 executeTapAction(mThreeFingerAction);
+            } else if(event.getPointerCount() == 1 && event.getAction() == MotionEvent.ACTION_DOWN) {
+                registerTap();
+            }
+        }
+
+        private int mTapCount = 0;
+
+        private Runnable mDoubleTapTimeout = new Runnable() {
+            @Override
+            public void run() {
+                mTapCount = 0;
+            }
+        };
+
+        private void registerTap() {
+            mTapCount++;
+            mMainThreadHandler.removeCallbacks(mDoubleTapTimeout);
+            mMainThreadHandler.postDelayed(mDoubleTapTimeout, DOUBLE_TAP_THRESHOLD_MS);
+            if(mTapCount >= 2) {
+                executeTapAction(mDoubleTapAction);
             }
         }
 
